@@ -10,6 +10,9 @@ class MainWindow(QMainWindow):
     def __init__(self):
         super(MainWindow, self).__init__()
 
+        global elements
+        elements = []
+
         self.setWindowTitle("Periodic Table - algosipm")
 
         layout = QVBoxLayout()
@@ -20,7 +23,6 @@ class MainWindow(QMainWindow):
         widget = QWidget()
         widget.setLayout(layout)
 
-        self.setMinimumSize(960, 540)
         self.setCentralWidget(widget)
 
 

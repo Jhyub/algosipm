@@ -13,6 +13,12 @@ class Table(QGridLayout):
         for i in range(1, 19):
             self.addWidget(ac(QLabel(f"{i}", self.widget())), 0, i)
         for i in range(1, 10):
+            if i == 8:
+                self.addWidget(ac(QLabel("La", self.widget())), i, 0)
+                continue
+            if i == 9:
+                self.addWidget(ac(QLabel("Ac", self.widget())), i, 0)
+                continue
             self.addWidget(ac(QLabel(f"{i}", self.widget())), i, 0)
         for i in Element.load():
             self.addWidget(ElementButton(i), i.period, i.group)

@@ -38,10 +38,10 @@ class FilterChain(Filter):
 
     def parse(self, ss: list[(int, str)]) -> (Filter, Filter, FilterChainConnection):
         print(f"debug / {ss}")
-        if ss[0][1] == "&&":
-            self.error = f"Error at word #{ss[0][0]} '{ss[0][1]}': unexpected &&"
-        elif ss[0][1] == "||":
-            self.error = f"Error at word #{ss[0][0]} '{ss[0][1]}': unexpected ||"
+        if ss[0][1] == "and":
+            self.error = f"Error at word #{ss[0][0]} '{ss[0][1]}': unexpected 'and'"
+        elif ss[0][1] == "or":
+            self.error = f"Error at word #{ss[0][0]} '{ss[0][1]}': unexpected 'or'"
         elif len(ss[0][1]) == 0:
             self.error = f"Error at word #{ss[0][0]} '{ss[0][1]}': inappropriate empty token"
         elif ss[0][1][0] == "!":  # Catch not
@@ -68,15 +68,15 @@ class FilterChain(Filter):
     def handleLeftover(self, caught, leftover, returnval):
         if len(leftover) == 0:
             return returnval
-        if leftover[0][1] == "&&":
+        if leftover[0][1] == "and":
             if len(leftover) == 1:
                 self.error = f"Error at word #{leftover[0][0]} '{leftover[0][1]}': unexpected dead end"
             return FilterChain(caught), FilterChain(leftover[1:]), FilterChainConnection.AND
-        if leftover[0][1] == "||":
+        if leftover[0][1] == "or":
             if len(leftover) == 1:
                 self.error = f"Error at word #{leftover[0][0]} '{leftover[0][1]}': unexpected dead end"
             return FilterChain(caught), FilterChain(leftover[1:]), FilterChainConnection.OR
-        self.error = f"Error at word #{leftover[0][0]} '{leftover[0][1]}': expected && or ||"
+        self.error = f"Error at word #{leftover[0][0]} '{leftover[0][1]}': expected 'and' or 'or'"
         return Empty(), Empty(), FilterChainConnection.AND
 
     """
@@ -86,17 +86,30 @@ class FilterChain(Filter):
     """
     def catchParentheses(self, ss: list[(int, str)]) -> (list[(int, str)], list[(int, str)]):
         idx = -1
-        for (idxs, (i, j)) in enumerate(reversed(ss)):
+        cnt = 0
+        for (idxs, (i, j)) in enumerate(ss):
             if len(j) == 0:
                 continue
-            if j[-1] == ")":
+            k = 0
+            while j[k] == "(":
+                cnt += 1
+                k += 1
+                if k >= len(j):
+                    break
+            k = -1
+            while j[k] == ")":
+                cnt -= 1
+                k -= 1
                 idx = idxs
-                break
-        if idx == -1:
+                if -k > len(j):
+                    break
+        if cnt != 0:
             self.error = f"Error at word #{ss[0][0]} '{ss[0][1]}': unclosed parentheses"
             return [], []
         ss[0] = (ss[0][0], ss[0][1][1:])
         ss[idx] = (ss[idx][0], ss[idx][1][:-1])
+        if len(ss[idx][1]) == 0:
+            return ss[0:idx], ss[idx+1:]
         return ss[0:idx+1], ss[idx+1:]
 
     def catchAttribute(self, ss: list[(int, str)]) -> (list[(int, str)], list[(int, str)]):
@@ -171,6 +184,40 @@ class AttributeFilter(Filter):
     def __init__(self, attributeName: str, value: str):
         super(AttributeFilter, self).__init__()
         print(f"debug / attribute name: {attributeName}, value: {value}")
+        self.name = attributeName
+        self.value = value
 
     def check(self, element: Element) -> bool:
+        if self.name == "name":
+            return self.value.lower() == element.name.lower()
+        if self.name == "symbol":
+            return self.value.lower() == element.symbol.lower()
+        if self.name == "period":
+            if self.value.isdigit():
+                if element.period in [8, 9]:
+                    return int(self.value) == element.period-2
+                return int(self.value) == element.period
+            return False
+        if self.name == "group":
+            if element.period in [8, 9]:
+                if self.value.isdigit():
+                    return False
+            if self.value.lower() == "la":
+                return 8 == element.period
+            if self.value.lower() == "ac":
+                return 9 == element.period
+            if self.value.isdigit():
+                return int(self.value) == element.group
+            return False
+        if self.name == "metal":
+            if self.value.lower() == "nonmetal":
+                return 0 == element.metal
+            if self.value.lower() == "metalloid":
+                return 1 == element.metal
+            if self.value.lower() == "metal":
+                return 2 == element.metal
+            if self.value.lower() == "unknown":
+                return 3 == element.metal
+            return False
         return True
+
